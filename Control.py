@@ -2,7 +2,7 @@ import numpy as np
 import scipy.linalg
 from math import inf
 
-class ContinuosStabilizingLQR:
+class ContinuousLQR:
     def __init__(self,
                  A,   # system matrix \inR^{nxn}
                  B,   # input  matrix \inR^{nxp}
@@ -51,11 +51,15 @@ class ContinuosStabilizingLQR:
     def setControlOffset(self, the_offset):
         self.ControlOffset = the_offset
 
-    def run(self, the_state):
-        # calculate input gain:
-        u = -self.K@the_state + self.ControlOffset
-        # saturation:
+    def __saturation(self, the_u):
         for input, constraint in self._BoxConstraints.items():
-            u[input] = constraint[0] if u[input] <= constraint[0] else u[input]
-            u[input] = constraint[1] if u[input] >= constraint[1] else u[input]
-        return u
+            the_u[input] = constraint[0] if the_u[input] <= constraint[0] else the_u[input]
+            the_u[input] = constraint[1] if the_u[input] >= constraint[1] else the_u[input]
+        return the_u
+
+    def runStabilizing(self, the_state):
+        return self.__saturation(-self.K@the_state + self.ControlOffset)
+        
+    def runTracking(self, the_state, the_reference):
+        return self.__saturation(self.K@(the_reference - the_state) + self.ControlOffset)
+
