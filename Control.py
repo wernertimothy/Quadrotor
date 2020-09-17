@@ -63,3 +63,49 @@ class ContinuousLQR:
     def runTracking(self, the_state, the_reference):
         return self.__saturation(self.K@(the_reference - the_state) + self.ControlOffset)
 
+class ZTC_MPC:
+    def __init__(self,
+                 the_A,
+                 the_B,
+                 the_initialCondition,
+                 the_N, 
+                 the_Q, 
+                 the_R, 
+                 the_stateConstraints, 
+                 the_inputConstraints ):
+        self.__N  = the_N                 # discrete horizon
+        self.__A  = the_A                 # discrete system matrix
+        self.__B  = the_B                 # discrete input matrix
+        self.__Q  = the_Q                 # state penalty
+        self.__R  = the_R                 # input penalty
+        self.__IC = the_initialCondition  # initial condition
+
+        self.__n = np.size(self.__A,0)
+        self.__p = np.size(self.__B,1)
+
+        self.predictedStateTrajectory = np.zeros((self.__n, self.__N+1))
+        self.predictedInputTrajectory = np.zeros((self.__p, self.__N))
+
+        # self.__Z = cp.Variable((self.__N+1)*self.__n + self.__N*self.__p)
+
+        # build up cost
+        # buil up equality constraints
+        # build up inequality constraints 
+
+        self.__prob = 0
+
+    def setInitialCondition(self, the_initialCondition):
+        self.__IC = the_initialCondition
+
+    def updateProblem(self):
+        pass
+
+    def reshapeSolution(self):
+        pass
+        
+    def run(self, the_state):
+        self.setInitialCondition(the_state)
+        self.updateProblem()
+        # self.__prob.solve()
+        self.reshapeSolution()
+        return self.predictedInputTrajectory[:,0]
