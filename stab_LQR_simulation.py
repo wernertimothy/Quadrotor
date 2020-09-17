@@ -1,5 +1,5 @@
 from Systems import PlanarQuadrotor
-from Controller import ContinuosStabilizingLQR
+from Control import ContinuosStabilizingLQR
 
 import numpy as np
 import matplotlib.pyplot as plt

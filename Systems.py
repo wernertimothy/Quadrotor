@@ -66,6 +66,7 @@ class PlanarQuadrotor:
             k4 = self.__evaluateRHS(self._state+dt*k3,   the_input)
             self._state = self._state + dt/6*(k1+2*k2+2*k3+k4)
             t += dt
+
     def getLinearization(self):
             theta_bar  = 0.0
             u_bar = self.__mass*self.__g/2
