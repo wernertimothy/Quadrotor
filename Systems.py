@@ -43,7 +43,7 @@ class PlanarQuadrotor:
         stateDerivative[self.theta_num-1 ] = the_state[self.dtheta_num-1]
         stateDerivative[self.dx_num-1    ] = -1/self.__mass*(the_input[0] + the_input[1])*np.sin(self._state[self.theta_num-1])
         stateDerivative[self.dy_num-1    ] =  1/self.__mass*(the_input[0] + the_input[1])*np.cos(self._state[self.theta_num-1]) - self.__g
-        stateDerivative[self.dtheta_num-1] = self.__ArmLength/self.__inertia*(the_input[0]- the_input[1])
+        stateDerivative[self.dtheta_num-1] = self.__ArmLength/self.__inertia*(the_input[0] - the_input[1])
         return stateDerivative
 
     def set_state(self, the_state):
