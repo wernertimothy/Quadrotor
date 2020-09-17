@@ -68,28 +68,31 @@ class PlanarQuadrotor:
             t += dt
 
     def getLinearization(self):
-            theta_bar  = 0.0
-            u_bar = self.__mass*self.__g/2
+        theta_bar  = 0.0
+        u_bar = self.__mass*self.__g/2
 
-            delddx_dtheta = -1/self.__mass*np.cos(theta_bar)*(u_bar + u_bar)
-            delddy_dtheta =  1/self.__mass*np.sin(theta_bar)*(u_bar + u_bar)
+        delddx_dtheta = -1/self.__mass*np.cos(theta_bar)*(u_bar + u_bar)
+        delddy_dtheta =  1/self.__mass*np.sin(theta_bar)*(u_bar + u_bar)
 
-            A = np.matrix([
-                [0, 0,             0, 1, 0, 0],
-                [0, 0,             0, 0, 1, 0],
-                [0, 0,             0, 0, 0, 1],
-                [0, 0, delddx_dtheta, 0, 0, 0],
-                [0, 0, delddy_dtheta, 0, 0, 0],
-                [0, 0,             0, 0, 0, 0]
-            ])
+        A = np.matrix([
+            [0, 0,             0, 1, 0, 0],
+            [0, 0,             0, 0, 1, 0],
+            [0, 0,             0, 0, 0, 1],
+            [0, 0, delddx_dtheta, 0, 0, 0],
+            [0, 0, delddy_dtheta, 0, 0, 0],
+            [0, 0,             0, 0, 0, 0]
+        ])
 
-            B = np.matrix([
-                [0, 0],
-                [0, 0],
-                [0, 0],
-                [-1/self.__mass*np.sin(theta_bar), -1/self.__mass*np.sin(theta_bar)],
-                [ 1/self.__mass*np.cos(theta_bar),  1/self.__mass*np.cos(theta_bar)],
-                [self.__ArmLength/self.__inertia , -self.__ArmLength/self.__inertia]
-            ])
+        B = np.matrix([
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [-1/self.__mass*np.sin(theta_bar), -1/self.__mass*np.sin(theta_bar)],
+            [ 1/self.__mass*np.cos(theta_bar),  1/self.__mass*np.cos(theta_bar)],
+            [self.__ArmLength/self.__inertia , -self.__ArmLength/self.__inertia]
+        ])
 
-            return A, B
+        return A, B
+
+    def getLTV(self):
+        pass
