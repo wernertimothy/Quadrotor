@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.linalg
+import cvxpy as cp
 from math import inf
 
 class ContinuousLQR:
@@ -91,25 +92,23 @@ class ZTC_MPC:
         self.__Aeq = np.zeros((self.__n*(self.__N+1),self.__dim))
         self.__beq = np.zeros(self.__n*(self.__N+1))
 
-        # self.__Z = cp.Variable((self.__N+1)*self.__n + self.__N*self.__p)
+        self.__Z = cp.Variable((self.__N+1)*self.__n + self.__N*self.__p)
 
         self.__buildCost()
         self.__buildEqualityConstraints()
         # self.__buildInequalityConstraints()
 
-        self.__prob = 0
-
     def __buildCost(self):
         for k in range(0,self.__N):
             # stack Q on the diagonal from stage 0 to N-1
             self.__H[k*self.__n:(k+1)*self.__n,
-                     k*self.__n:(k+1)*self.__n] = self.__Q
+                     k*self.__n:(k+1)*self.__n] = 2*self.__Q
             # stack R on the diagonal from stage 0 to N-1
             self.__H[self.__n*(self.__N+1)+k*self.__p:self.__n*(self.__N+1)+(k+1)*self.__p,
-                     self.__n*(self.__N+1)+k*self.__p:self.__n*(self.__N+1)+(k+1)*self.__p] = self.__R
+                     self.__n*(self.__N+1)+k*self.__p:self.__n*(self.__N+1)+(k+1)*self.__p] = 2*self.__R
         # stack Q for stage N
         self.__H[self.__N*self.__n:(self.__N+1)*self.__n,
-                 self.__N*self.__n:(self.__N+1)*self.__n] = self.__Q
+                 self.__N*self.__n:(self.__N+1)*self.__n] = 2*self.__Q
 
     def __buildEqualityConstraints(self):
         # x(j) = intial condition
@@ -126,14 +125,15 @@ class ZTC_MPC:
         pass
 
     def __buildProblem(self):
-        pass
+        self.__prob = cp.Problem(cp.Minimize((1/2)*cp.quad_form(self.__Z, self.__H)),
+                                 self.__Aeq @ self.__Z == self.__beq)
 
     def setInitialCondition(self, the_initialCondition):
         self.__IC = the_initialCondition
 
     def updateProblem(self):
         self.__beq[0:self.__n] = self.__IC # set new initial condition
-        self.__buildProblem()
+        self.__buildProblem()              # rebuild the problem
 
     def reshapeSolution(self):
         pass
@@ -141,6 +141,6 @@ class ZTC_MPC:
     def run(self, the_state):
         self.setInitialCondition(the_state)
         self.updateProblem()
-        # self.__prob.solve()
+        self.__prob.solve()
         self.reshapeSolution()
         return self.predictedInputTrajectory[:,0]
