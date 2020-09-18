@@ -67,7 +67,6 @@ class ZTC_MPC:
     def __init__(self,
                  the_A,
                  the_B,
-                 the_initialCondition,
                  the_N, 
                  the_Q, 
                  the_R, 
@@ -78,27 +77,63 @@ class ZTC_MPC:
         self.__B  = the_B                 # discrete input matrix
         self.__Q  = the_Q                 # state penalty
         self.__R  = the_R                 # input penalty
-        self.__IC = the_initialCondition  # initial condition
 
-        self.__n = np.size(self.__A,0)
-        self.__p = np.size(self.__B,1)
+        self.__n   = np.size(self.__A,0)                         # state dimension
+        self.__p   = np.size(self.__B,1)                         # input dimension
+        self.__dim = (self.__N+1)*self.__n + self.__N*self.__p   # QP dimension
+
+        self.__IC = np.zeros(self.__n)
 
         self.predictedStateTrajectory = np.zeros((self.__n, self.__N+1))
         self.predictedInputTrajectory = np.zeros((self.__p, self.__N))
 
+        self.__H = np.zeros((self.__dim, self.__dim))
+        self.__Aeq = np.zeros((self.__n*(self.__N+1),self.__dim))
+        self.__beq = np.zeros(self.__n*(self.__N+1))
+
         # self.__Z = cp.Variable((self.__N+1)*self.__n + self.__N*self.__p)
 
-        # build up cost
-        # buil up equality constraints
-        # build up inequality constraints 
+        self.__buildCost()
+        self.__buildEqualityConstraints()
+        # self.__buildInequalityConstraints()
 
         self.__prob = 0
+
+    def __buildCost(self):
+        for k in range(0,self.__N):
+            # stack Q on the diagonal from stage 0 to N-1
+            self.__H[k*self.__n:(k+1)*self.__n,
+                     k*self.__n:(k+1)*self.__n] = self.__Q
+            # stack R on the diagonal from stage 0 to N-1
+            self.__H[self.__n*(self.__N+1)+k*self.__p:self.__n*(self.__N+1)+(k+1)*self.__p,
+                     self.__n*(self.__N+1)+k*self.__p:self.__n*(self.__N+1)+(k+1)*self.__p] = self.__R
+        # stack Q for stage N
+        self.__H[self.__N*self.__n:(self.__N+1)*self.__n,
+                 self.__N*self.__n:(self.__N+1)*self.__n] = self.__Q
+
+    def __buildEqualityConstraints(self):
+        # x(j) = intial condition
+        self.__Aeq[0:self.__n, 0:self.__n] = np.identity(self.__n)
+        self.__beq[0:self.__n] = self.__IC
+        # Ax(j+k) - Ix(j+k+1) + Bu(j+k) = 0
+        for k in range(0, self.__N):
+            self.__Aeq[(k+1)*self.__n:(k+2)*self.__n,
+                       k*self.__n:(k+2)*self.__n] = np.concatenate((self.__A, -np.identity(self.__n)), axis = 1)
+            self.__Aeq[(k+1)*self.__n:(k+2)*self.__n,
+                       self.__n*(self.__N+1)+k*self.__p:self.__n*(self.__N+1)+(k+1)*self.__p] = self.__B
+
+    def __buildInequalityConstraints(self):
+        pass
+
+    def __buildProblem(self):
+        pass
 
     def setInitialCondition(self, the_initialCondition):
         self.__IC = the_initialCondition
 
     def updateProblem(self):
-        pass
+        self.__beq[0:self.__n] = self.__IC # set new initial condition
+        self.__buildProblem()
 
     def reshapeSolution(self):
         pass
