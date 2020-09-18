@@ -3,6 +3,8 @@ import scipy.linalg
 import cvxpy as cp
 from math import inf
 
+import matplotlib.pylab as plt
+
 class ContinuousLQR:
     def __init__(self,
                  A,   # system matrix \inR^{nxn}
@@ -71,8 +73,9 @@ class ZTC_MPC:
                  the_N, 
                  the_Q, 
                  the_R, 
-                 the_stateConstraints, 
-                 the_inputConstraints ):
+                #  the_stateConstraints, 
+                #  the_inputConstraints 
+                 ):
         self.__N  = the_N                 # discrete horizon
         self.__A  = the_A                 # discrete system matrix
         self.__B  = the_B                 # discrete input matrix
@@ -89,8 +92,8 @@ class ZTC_MPC:
         self.predictedInputTrajectory = np.zeros((self.__p, self.__N))
 
         self.__H = np.zeros((self.__dim, self.__dim))
-        self.__Aeq = np.zeros((self.__n*(self.__N+1),self.__dim))
-        self.__beq = np.zeros(self.__n*(self.__N+1))
+        self.__Aeq = np.zeros((self.__n*(self.__N+2),self.__dim))
+        self.__beq = np.zeros(self.__n*(self.__N+2))
 
         self.__Z = cp.Variable((self.__N+1)*self.__n + self.__N*self.__p)
 
@@ -120,27 +123,31 @@ class ZTC_MPC:
                        k*self.__n:(k+2)*self.__n] = np.concatenate((self.__A, -np.identity(self.__n)), axis = 1)
             self.__Aeq[(k+1)*self.__n:(k+2)*self.__n,
                        self.__n*(self.__N+1)+k*self.__p:self.__n*(self.__N+1)+(k+1)*self.__p] = self.__B
+        # x(j+N) = 0
+        self.__Aeq[(self.__N+1)*self.__n:,
+                   (self.__N)*self.__n:(self.__N+1)*self.__n] = np.identity(self.__n)
 
     def __buildInequalityConstraints(self):
         pass
 
     def __buildProblem(self):
-        self.__prob = cp.Problem(cp.Minimize((1/2)*cp.quad_form(self.__Z, self.__H)),
-                                 self.__Aeq @ self.__Z == self.__beq)
-
-    def setInitialCondition(self, the_initialCondition):
-        self.__IC = the_initialCondition
-
+        objective   = cp.Minimize((1/2)*cp.quad_form(self.__Z, self.__H))
+        constraints = [self.__Aeq @ self.__Z == self.__beq]
+        self.__prob = cp.Problem(objective, constraints)
+        
     def updateProblem(self):
         self.__beq[0:self.__n] = self.__IC # set new initial condition
         self.__buildProblem()              # rebuild the problem
 
     def reshapeSolution(self):
-        pass
+        X = self.__Z.value[0:(self.__N+1)*self.__n]
+        U = self.__Z.value[(self.__N+1)*self.__n:]
+        self.predictedStateTrajectory = np.reshape(X, (self.__n, self.__N+1))
+        self.predictedInputTrajectory = np.reshape(U, (self.__p, self.__N))
         
     def run(self, the_state):
-        self.setInitialCondition(the_state)
+        self.__IC = the_state
         self.updateProblem()
-        self.__prob.solve()
+        self.__prob.solve(verbose=True)
         self.reshapeSolution()
         return self.predictedInputTrajectory[:,0]
