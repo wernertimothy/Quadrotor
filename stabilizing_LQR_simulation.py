@@ -14,6 +14,7 @@ X0 = np.array([float(-1.0 + np.random.rand(1)*2),
                float(-0.5 + np.random.rand(1)*1),
                float(-0.5 + np.random.rand(1)*1),
                float(-0.1 + np.random.rand(1)*0.2) ])              # random initial condition
+# X0 = np.array([0.5, -0.5, 0.0, 0.0, 0.0, 0.0])
 quad.set_state(X0)                                                 # set initial condition
 quad.set_SampleRate(0.01)                                          # set the sample rate
 
