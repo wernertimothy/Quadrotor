@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.linalg
 
 class PlanarQuadrotor:
     # === constructor ===
@@ -93,6 +94,16 @@ class PlanarQuadrotor:
         ])
 
         return A, B
+
+    def getDiscreteLinearization(self):
+        A, B = self.getLinearization()
+        Ak = scipy.linalg.expm(A*self.SamleRate)
+        det_A = scipy.linalg.det(A)
+        if not det_A == 0:
+            Bk = scipy.linalg.inv(A)@(Ak - np.identity(self._StateDimension))@B
+        else:
+            Bk = self.SamleRate*B
+        return Ak, Bk
 
     def getLTV(self):
         pass
