@@ -16,8 +16,8 @@ quad.set_SampleRate(0.01)                       # set the sample rate
 A, B = quad.getLinearization()
 ctrl = ContinuousLQR(A, B, np.diag([10, 10, 0.1, 1, 1, 1]), np.diag([10, 10]))
 ctrl.setControlOffset(np.array([0.25*9.81, 0.25*9.81]))            # assuming perfect knowledge
-ctrl.setBoxConstraints(np.array( [[-3, 3],                         # set min and max force
-                                  [-3, 3]] ))
+ctrl.setBoxConstraints(np.array( [[0.5, 3.0],                         # set min and max force
+                                  [0.5, 3.0]] ))
 
 # define trajectory
 duration = 15                   # time for on traversal
