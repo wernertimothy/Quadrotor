@@ -56,7 +56,7 @@ ax.grid()
 ax.set_xlabel('X [m]')
 ax.set_ylabel('Y [m]')
 
-ax.plot(Lem[0,:], Lem[1,:])
+ax.plot(Lem[0,:], Lem[1,:],'r')
 
 line, = ax.plot([], [], 'o-', lw=2)
 
