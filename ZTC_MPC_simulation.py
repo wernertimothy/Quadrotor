@@ -3,6 +3,7 @@ from Control import ZTC_MPC
 
 import numpy as np
 import cvxpy as cp
+import scipy.sparse
 import matplotlib.pyplot as plt
 
 # define system
@@ -13,8 +14,10 @@ quad.set_SampleRate(0.01)                       # set the sample rate
 
 # define controler
 A, B = quad.getDiscreteLinearization()
-Q = np.diag([10, 10, 0.1, 1, 1, 1])
-R = np.diag([10, 10])
+A = scipy.sparse.csr_matrix(A)
+B = scipy.sparse.csr_matrix(B)
+Q = scipy.sparse.diags([10, 10, 0.1, 1, 1, 1])
+R = scipy.sparse.diags([10, 10])
 N = 50
 ctrl = ZTC_MPC(A, B, N, Q, R)
 u = ctrl.run(X0)
