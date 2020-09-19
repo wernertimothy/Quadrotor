@@ -31,8 +31,37 @@ umin = np.array([-np.inf, -np.inf])
 umax = np.array([ np.inf,  np.inf])
 
 ctrl = ZTC_MPC(A, B, N, Q, R, xmin, xmax, umin, umax)
-u = ctrl.run(X0)
-print(u)
 
-plt.plot(ctrl.predictedStateTrajectory[0,:], ctrl.predictedStateTrajectory[1,:])
+
+# simulate
+simulation_time = 0.01
+sim_N = int(simulation_time/quad.SamleRate)
+
+X = np.empty([quad._StateDimension,sim_N])
+U = np.empty([quad._InputDimension,sim_N])
+
+time = np.arange(0.0, simulation_time, quad.SamleRate)
+step = 0
+
+X[:,step] = X0
+for step,t in enumerate(time):
+    u = ctrl.run(X[:,step]) + np.array([0.25*9.81, 0.25*9.81])  # run controler
+    U[:,step] = u                        # log input
+    quad.Integrate(u)                    # apply input to system
+    X[:,step] = quad._state              # log the state
+
+
+plt.figure(1)
+# plt.plot(ctrl.predictedStateTrajectory[0,:], ctrl.predictedStateTrajectory[1,:])
+plt.plot(X[0,:], X[1,:])
+
+fig2, (ax1, ax2) = plt.subplots(2,1)
+ax1.plot(time, U[0,:])
+ax2.plot(time, U[1,:])
+ax1.set_ylabel('u1 [N]')
+ax2.set_ylabel('u2 [N]')
+ax2.set_xlabel('time [s]')
+ax1.grid()
+ax2.grid()
+
 plt.show()
