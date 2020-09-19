@@ -2,7 +2,6 @@ import numpy as np
 import scipy.linalg
 import scipy.sparse
 import cvxpy as cp
-import osqp
 
 import matplotlib.pylab as plt
 
@@ -91,8 +90,6 @@ class ZTC_MPC:
 
         [self.__n, self.__p] = the_B.shape # state and input dimension
 
-        
-
         # prealocate logging array
         self.predictedStateTrajectory = np.zeros((self.__n, self.__N+1))
         self.predictedInputTrajectory = np.zeros((self.__p, self.__N))
@@ -129,6 +126,6 @@ class ZTC_MPC:
         
     def run(self, the_state):
         self.__IC.value = the_state   # update problem with new initial state
-        self.__prob.solve(verbose = True, warm_start = True, solver = cp.OSQP)
+        self.__prob.solve(verbose = False, warm_start = True, solver = cp.OSQP)
         self.reshapeSolution()
         return self.predictedInputTrajectory[:,0]
