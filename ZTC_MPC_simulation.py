@@ -11,10 +11,10 @@ import matplotlib.animation as animation
 quad = PlanarQuadrotor()
 X0 = np.array([float(-1.0 + np.random.rand(1)*2),
                float(-1.0 + np.random.rand(1)*2),
-               float(-1.5 + np.random.rand(1)*3),
+               float(-np.pi/4 + np.random.rand(1)*np.pi/2),
                float(-0.5 + np.random.rand(1)*1),
                float(-0.5 + np.random.rand(1)*1),
-               float(-0.1 + np.random.rand(1)*0.2) ])    # random initial condition
+               float(-0.2 + np.random.rand(1)*0.4) ])    # random initial condition
 # X0 = np.array([0.3, -0.5, 0.0, 0.0, 0.0, 0.0 ])          # initial condition
 quad.set_state(X0)                                       # set initial condition
 quad.set_SampleRate(0.01)                                # set the sample rate
@@ -26,10 +26,10 @@ B = scipy.sparse.csr_matrix(B)
 Q = scipy.sparse.diags([10, 10, 0.1, 1, 1, 1])
 R = scipy.sparse.diags([10, 10])
 N = 250
-xmin = np.array([-np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
-xmax = np.array([ np.inf,  np.inf,  np.inf,  np.inf,  np.inf,  np.inf])
-umin = np.array([-np.inf, -np.inf])
-umax = np.array([ np.inf,  np.inf])
+xmin = np.array([-np.inf, -np.inf, -np.inf, -1.0, -1.0, -np.inf])
+xmax = np.array([ np.inf,  np.inf,  np.inf,  1.0,  1.0,  np.inf])
+umin = np.array([ 0.5, 0.5]) - np.array([0.25*9.81, 0.25*9.81])
+umax = np.array([ 3.0, 3.0]) - np.array([0.25*9.81, 0.25*9.81])
 
 ctrl = ZTC_MPC(A, B, N, Q, R, xmin, xmax, umin, umax)
 
@@ -57,10 +57,10 @@ for step,t in enumerate(time):
     y_pred[step,:] = ctrl.predictedStateTrajectory[1,:]
 
 # visualization
-x_left  = X[0,:] - np.cos(X[3,:])*0.1
-x_right = X[0,:] + np.cos(X[3,:])*0.1
-y_left  = X[1,:] - np.sin(X[3,:])*0.1
-y_right = X[1,:] + np.sin(X[3,:])*0.1
+x_left  = X[0,:] - np.cos(X[2,:])*0.1
+x_right = X[0,:] + np.cos(X[2,:])*0.1
+y_left  = X[1,:] - np.sin(X[2,:])*0.1
+y_right = X[1,:] + np.sin(X[2,:])*0.1
 
 fig1 = plt.figure(figsize=(5, 4))
 ax = fig1.add_subplot(111, autoscale_on=False, xlim=(-2, 2), ylim=(-2, 2))
@@ -93,5 +93,8 @@ ax2.set_ylabel('u2 [N]')
 ax2.set_xlabel('time [s]')
 ax1.grid()
 ax2.grid()
+
+# fig3 = plt.figure()
+# plt.plot(time, X[5,:])
 
 plt.show()
