@@ -1,6 +1,8 @@
 import numpy as np
 import scipy.linalg
+import scipy.sparse
 import cvxpy as cp
+import osqp
 
 import matplotlib.pylab as plt
 
@@ -67,86 +69,66 @@ class ContinuousLQR:
 
 class ZTC_MPC:
     def __init__(self,
-                 the_A,
-                 the_B,
-                 the_N, 
-                 the_Q, 
-                 the_R, 
-                #  the_stateConstraints, 
-                #  the_inputConstraints 
+                 the_A,         # discrete system matrix (should be scipy.sparse)            
+                 the_B,         # discrete input matrix (should be scipy.sparse)
+                 the_N,         # discrete horizon
+                 the_Q,         # state penalty (should be scipy.sparse)
+                 the_R,         # input penalty (should be scipy.sparse)
+                 the_x_min,     # lower bound on x (should be np.array) use -np.inf/np.inf if unconstraint
+                 the_x_max,     # upper bound on x
+                 the_u_min,     # lower bounf on u
+                 the_u_max      # upper bound on u
                  ):
-        self.__N  = the_N                 # discrete horizon
-        self.__A  = the_A                 # discrete system matrix
-        self.__B  = the_B                 # discrete input matrix
-        self.__Q  = the_Q                 # state penalty
-        self.__R  = the_R                 # input penalty
+        self.__N  = the_N                  
+        self.__A  = the_A                  
+        self.__B  = the_B                  
+        self.__Q  = the_Q                  
+        self.__R  = the_R 
+        self.__xmin = the_x_min
+        self.__xmax = the_x_max
+        self.__umin = the_u_min
+        self.__umax = the_u_max
 
-        self.__n   = np.size(self.__A,0)                         # state dimension
-        self.__p   = np.size(self.__B,1)                         # input dimension
-        self.__dim = (self.__N+1)*self.__n + self.__N*self.__p   # QP dimension
+        [self.__n, self.__p] = the_B.shape # state and input dimension
 
-        self.__IC = np.zeros(self.__n)
+        
 
+        # prealocate logging array
         self.predictedStateTrajectory = np.zeros((self.__n, self.__N+1))
         self.predictedInputTrajectory = np.zeros((self.__p, self.__N))
 
-        self.__H = np.zeros((self.__dim, self.__dim))
-        self.__Aeq = np.zeros((self.__n*(self.__N+2),self.__dim))
-        self.__beq = np.zeros(self.__n*(self.__N+2))
+        # define optimization variable
+        self.__U = cp.Variable((self.__p, self.__N))   # input trajectory
+        self.__X = cp.Variable((self.__n, self.__N+1)) # state trajectory
+        self.__IC = cp.Parameter(self.__n)             # set initial condition as parameter
 
-        self.__Z = cp.Variable((self.__N+1)*self.__n + self.__N*self.__p)
-
-        self.__buildCost()
-        self.__buildEqualityConstraints()
-        # self.__buildInequalityConstraints()
-
-    def __buildCost(self):
-        for k in range(0,self.__N):
-            # stack Q on the diagonal from stage 0 to N-1
-            self.__H[k*self.__n:(k+1)*self.__n,
-                     k*self.__n:(k+1)*self.__n] = 2*self.__Q
-            # stack R on the diagonal from stage 0 to N-1
-            self.__H[self.__n*(self.__N+1)+k*self.__p:self.__n*(self.__N+1)+(k+1)*self.__p,
-                     self.__n*(self.__N+1)+k*self.__p:self.__n*(self.__N+1)+(k+1)*self.__p] = 2*self.__R
-        # stack Q for stage N
-        self.__H[self.__N*self.__n:(self.__N+1)*self.__n,
-                 self.__N*self.__n:(self.__N+1)*self.__n] = 2*self.__Q
-
-    def __buildEqualityConstraints(self):
-        # x(j) = intial condition
-        self.__Aeq[0:self.__n, 0:self.__n] = np.identity(self.__n)
-        self.__beq[0:self.__n] = self.__IC
-        # Ax(j+k) - Ix(j+k+1) + Bu(j+k) = 0
-        for k in range(0, self.__N):
-            self.__Aeq[(k+1)*self.__n:(k+2)*self.__n,
-                       k*self.__n:(k+2)*self.__n] = np.concatenate((self.__A, -np.identity(self.__n)), axis = 1)
-            self.__Aeq[(k+1)*self.__n:(k+2)*self.__n,
-                       self.__n*(self.__N+1)+k*self.__p:self.__n*(self.__N+1)+(k+1)*self.__p] = self.__B
-        # x(j+N) = 0
-        self.__Aeq[(self.__N+1)*self.__n:,
-                   (self.__N)*self.__n:(self.__N+1)*self.__n] = np.identity(self.__n)
-
-    def __buildInequalityConstraints(self):
-        pass
-
-    def __buildProblem(self):
-        objective   = cp.Minimize((1/2)*cp.quad_form(self.__Z, self.__H))
-        constraints = [self.__Aeq @ self.__Z == self.__beq]
-        self.__prob = cp.Problem(objective, constraints)
+        # build problem
+        self.__buildProblem()
         
-    def updateProblem(self):
-        self.__beq[0:self.__n] = self.__IC # set new initial condition
-        self.__buildProblem()              # rebuild the problem
+    def __buildProblem(self):
+        objective = 0                                                 # initialize objective
+        constraints =  [self.__X[:,0]        == self.__IC]            # first stage is current state
+        constraints += [self.__X[:,self.__N] == np.zeros(self.__n)]   # last stage is zero (ZTC)
+        # loop through stage 0 to N:
+        for k in range(0, self.__N):
+            # cost
+            objective += cp.quad_form(self.__X[:,k], self.__Q) + cp.quad_form(self.__U[:,k], self.__R)
+            # equality constraints
+            constraints += [self.__X[:,k+1] == self.__A@self.__X[:,k] + self.__B@self.__U[:,k]]
+            # inequality constraints
+            constraints += [self.__xmin <= self.__X[:,k], self.__X[:,k] <= self.__xmax]
+            constraints += [self.__umin <= self.__U[:,k], self.__U[:,k] <= self.__umax]
+        # stage N+1:
+        objective += cp.quad_form(self.__X[:,self.__N], self.__Q)
+
+        self.__prob = cp.Problem(cp.Minimize(objective), constraints)
 
     def reshapeSolution(self):
-        X = self.__Z.value[0:(self.__N+1)*self.__n]
-        U = self.__Z.value[(self.__N+1)*self.__n:]
-        self.predictedStateTrajectory = np.reshape(X, (self.__n, self.__N+1))
-        self.predictedInputTrajectory = np.reshape(U, (self.__p, self.__N))
+        self.predictedStateTrajectory = self.__X.value
+        self.predictedInputTrajectory = self.__U.value
         
     def run(self, the_state):
-        self.__IC = the_state
-        self.updateProblem()
-        self.__prob.solve(verbose=True)
+        self.__IC.value = the_state   # update problem with new initial state
+        self.__prob.solve(verbose = True, warm_start = True, solver = cp.OSQP)
         self.reshapeSolution()
         return self.predictedInputTrajectory[:,0]
