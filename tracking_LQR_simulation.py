@@ -44,10 +44,10 @@ for step,t in enumerate(time):
     X[:,step] = quad._state              # log the state
 
 # visualization
-x_left  = X[0,:] - np.cos(X[3,:])*0.1
-x_right = X[0,:] + np.cos(X[3,:])*0.1
-y_left  = X[1,:] - np.sin(X[3,:])*0.1
-y_right = X[1,:] + np.sin(X[3,:])*0.1
+x_left  = X[0,:] - np.cos(X[2,:])*0.1
+x_right = X[0,:] + np.cos(X[2,:])*0.1
+y_left  = X[1,:] - np.sin(X[2,:])*0.1
+y_right = X[1,:] + np.sin(X[2,:])*0.1
 
 fig1 = plt.figure(figsize=(5, 4))
 ax = fig1.add_subplot(111, autoscale_on=False, xlim=(-2, 2), ylim=(-2, 2))

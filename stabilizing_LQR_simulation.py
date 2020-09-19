@@ -10,7 +10,7 @@ import matplotlib.animation as animation
 quad = PlanarQuadrotor()                                           # system is the planar quadrotor
 X0 = np.array([float(-1.0 + np.random.rand(1)*2),
                float(-1.0 + np.random.rand(1)*2),
-               float(-1.5 + np.random.rand(1)*3),
+               float(-np.pi/4 + np.random.rand(1)*np.pi/2),
                float(-0.5 + np.random.rand(1)*1),
                float(-0.5 + np.random.rand(1)*1),
                float(-0.1 + np.random.rand(1)*0.2) ])              # random initial condition
@@ -48,10 +48,10 @@ for step,t in enumerate(time):
 
 
 # visualize
-x_left  = X[0,:] - np.cos(X[3,:])*0.1
-x_right = X[0,:] + np.cos(X[3,:])*0.1
-y_left  = X[1,:] - np.sin(X[3,:])*0.1
-y_right = X[1,:] + np.sin(X[3,:])*0.1
+x_left  = X[0,:] - np.cos(X[2,:])*0.1
+x_right = X[0,:] + np.cos(X[2,:])*0.1
+y_left  = X[1,:] - np.sin(X[2,:])*0.1
+y_right = X[1,:] + np.sin(X[2,:])*0.1
 
 fig1 = plt.figure(figsize=(5, 4))
 ax = fig1.add_subplot(111, autoscale_on=False, xlim=(-2, 2), ylim=(-2, 2))
