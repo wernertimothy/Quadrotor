@@ -5,6 +5,7 @@ import numpy as np
 import cvxpy as cp
 import scipy.sparse
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 # define system
 quad = PlanarQuadrotor()
@@ -24,7 +25,7 @@ A = scipy.sparse.csr_matrix(A)
 B = scipy.sparse.csr_matrix(B)
 Q = scipy.sparse.diags([10, 10, 0.1, 1, 1, 1])
 R = scipy.sparse.diags([10, 10])
-N = 200
+N = 250
 xmin = np.array([-np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
 xmax = np.array([ np.inf,  np.inf,  np.inf,  np.inf,  np.inf,  np.inf])
 umin = np.array([-np.inf, -np.inf])
@@ -32,28 +33,57 @@ umax = np.array([ np.inf,  np.inf])
 
 ctrl = ZTC_MPC(A, B, N, Q, R, xmin, xmax, umin, umax)
 
-
 # simulate
-simulation_time = 0.01
+simulation_time = 4
 sim_N = int(simulation_time/quad.SamleRate)
 
 X = np.empty([quad._StateDimension,sim_N])
 U = np.empty([quad._InputDimension,sim_N])
+
+x_pred = np.empty([sim_N, N+1])
+y_pred = np.empty([sim_N, N+1])
 
 time = np.arange(0.0, simulation_time, quad.SamleRate)
 step = 0
 
 X[:,step] = X0
 for step,t in enumerate(time):
-    u = ctrl.run(X[:,step]) + np.array([0.25*9.81, 0.25*9.81])  # run controler
+    u = ctrl.run(quad._state) + np.array([0.25*9.81, 0.25*9.81])  # run controler
     U[:,step] = u                        # log input
     quad.Integrate(u)                    # apply input to system
     X[:,step] = quad._state              # log the state
 
+    x_pred[step,:] = ctrl.predictedStateTrajectory[0,:]
+    y_pred[step,:] = ctrl.predictedStateTrajectory[1,:]
 
-plt.figure(1)
-# plt.plot(ctrl.predictedStateTrajectory[0,:], ctrl.predictedStateTrajectory[1,:])
-plt.plot(X[0,:], X[1,:])
+# visualization
+x_left  = X[0,:] - np.cos(X[3,:])*0.1
+x_right = X[0,:] + np.cos(X[3,:])*0.1
+y_left  = X[1,:] - np.sin(X[3,:])*0.1
+y_right = X[1,:] + np.sin(X[3,:])*0.1
+
+fig1 = plt.figure(figsize=(5, 4))
+ax = fig1.add_subplot(111, autoscale_on=False, xlim=(-2, 2), ylim=(-2, 2))
+ax.set_aspect('equal')
+ax.grid()
+ax.set_xlabel('X [m]')
+ax.set_ylabel('Y [m]')
+
+lines = []
+line1, = ax.plot([], [], 'o-', lw=2)
+line2, = ax.plot([], [], 'g')
+lines.append(line1)
+lines.append(line2)
+
+def animate(i):
+    x_data = [x_left[i], x_right[i]]
+    y_data = [y_left[i], y_right[i]]
+
+    line1.set_data(x_data, y_data)
+    line2.set_data(x_pred[i,:], y_pred[i,:])
+    return lines
+
+ani = animation.FuncAnimation(fig1, animate, len(X[0,:]), interval=10)
 
 fig2, (ax1, ax2) = plt.subplots(2,1)
 ax1.plot(time, U[0,:])
