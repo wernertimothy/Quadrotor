@@ -1,7 +1,6 @@
 import numpy as np
 import scipy.linalg
 import cvxpy as cp
-from math import inf
 
 import matplotlib.pylab as plt
 
@@ -22,7 +21,7 @@ class ContinuousLQR:
 
         self._BoxConstraints = {}
         for i in range(0, self.__InputDimension):
-            self._BoxConstraints[i] = np.array([-inf, inf])
+            self._BoxConstraints[i] = np.array([-np.inf, np.inf])
 
         if self.__check_conditions():
             P = np.matrix(scipy.linalg.solve_continuous_are(A, B, Q, R)) # solve continous Riccati
