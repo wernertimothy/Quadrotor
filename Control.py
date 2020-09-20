@@ -66,7 +66,7 @@ class ContinuousLQR:
     def runTracking(self, the_state, the_reference):
         return self.__saturation(self.K@(the_reference - the_state) + self.ControlOffset)
 
-class ZTC_MPC:
+class ZTC_LMPC:
     def __init__(self,
                  the_A,         # discrete system matrix (should be scipy.sparse)            
                  the_B,         # discrete input matrix (should be scipy.sparse)
@@ -78,11 +78,11 @@ class ZTC_MPC:
                  the_u_min,     # lower bounf on u
                  the_u_max      # upper bound on u
                  ):
-        self.__N  = the_N                  
-        self.__A  = the_A                  
-        self.__B  = the_B                  
-        self.__Q  = the_Q                  
-        self.__R  = the_R 
+        self.__N     = the_N                  
+        self.__A     = the_A                  
+        self.__B     = the_B                  
+        self.__Q     = the_Q                  
+        self.__R     = the_R 
         self.__xmin = the_x_min
         self.__xmax = the_x_max
         self.__umin = the_u_min
@@ -129,3 +129,88 @@ class ZTC_MPC:
         self.__prob.solve(verbose = False, warm_start = True, solver = cp.OSQP)
         self.reshapeSolution()
         return self.predictedInputTrajectory[:,0]
+
+
+class QINF_MPC:
+    def __init__(self,
+                 the_A,         # discrete system matrix (should be scipy.sparse)            
+                 the_B,         # discrete input matrix (should be scipy.sparse)
+                 the_N,         # discrete horizon
+                 the_Q,         # state penalty (should be scipy.sparse)
+                 the_R,         # input penalty (should be scipy.sparse)
+                 the_P,         # defines terminal region
+                 the_alpha,     # defines terminal region
+                 the_x_min,     # lower bound on x (should be np.array) use -np.inf/np.inf if unconstraint
+                 the_x_max,     # upper bound on x
+                 the_u_min,     # lower bounf on u
+                 the_u_max      # upper bound on u
+                 ):
+        self.__N     = the_N                  
+        self.__A     = the_A                  
+        self.__B     = the_B                  
+        self.__Q     = the_Q                  
+        self.__R     = the_R
+        self.__P     = the_P
+        self.__alpha = the_alpha
+        self.__xmin  = the_x_min
+        self.__xmax  = the_x_max
+        self.__umin  = the_u_min
+        self.__umax  = the_u_max
+
+        [self.__n, self.__p] = the_B.shape # state and input dimension
+
+        # prealocate logging array
+        self.predictedStateTrajectory = np.zeros((self.__n, self.__N+1))
+        self.predictedInputTrajectory = np.zeros((self.__p, self.__N))
+
+        # define optimization variable
+        self.__U = cp.Variable((self.__p, self.__N))   # input trajectory
+        self.__X = cp.Variable((self.__n, self.__N+1)) # state trajectory
+        self.__IC = cp.Parameter(self.__n)             # set initial condition as parameter
+
+        # build problem
+        self.__buildProblem()
+
+    def __buildProblem(self):
+        pass
+
+    def reshapeSolution(self):
+        self.predictedStateTrajectory = self.__X.value
+        self.predictedInputTrajectory = self.__U.value
+        
+    def run(self, the_state):
+        self.__IC.value = the_state   # update problem with new initial state
+        self.__prob.solve(verbose = False, warm_start = True, solver = cp.OSQP)
+        self.reshapeSolution()
+        return self.predictedInputTrajectory[:,0]
+
+def ComputeTerminalRegion(the_A, the_B, the_Q, the_R, the_umin, the_umax):
+    # step 1: determine K using LQR
+    P = np.matrix(scipy.linalg.solve_continuous_are(the_A, the_B, the_Q, the_R))
+    K = np.array(scipy.linalg.inv(the_R)*(the_B.T*P)) 
+    eigvals, eigvecs = np.linalg.eig(the_A - the_B@K)
+    max_eig = np.max(eigvals)
+
+    # choose now kappa sucht that lam_max(A-BK) < - kappa
+    kappa = 0.9
+
+    # step 2: compute P from Lyapunov equation
+    [n, p] = the_B.shape
+    P = scipy.linalg.solve_continuous_lyapunov( the_A-the_B@K + kappa*np.identity(n), the_Q+K.T@the_R@K)
+
+    # step 3: min. x'Px
+    #         s.t. u_min <= u <= u_max
+
+    Aiq = np.concatenate(np.identity(p), np.identity(p))
+    biq = np.concatenate(the_umin, the_umax)
+    m = np.size(Aiq, 0)
+    Alpha = np.zeros(m)
+
+    x = cp.Variable(n)
+    a = cp.Parameter(p)
+    b = cp.Parameter(1)
+
+    objective = cp.Minimize(- cp.quad_form(x, P))
+    constraint = [a@K@x == b]
+    
+      
