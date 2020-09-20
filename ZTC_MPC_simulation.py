@@ -1,5 +1,5 @@
 from Systems import PlanarQuadrotor
-from Control import ZTC_MPC
+from Control import ZTC_LMPC
 
 import numpy as np
 import cvxpy as cp
@@ -31,7 +31,7 @@ xmax = np.array([ np.inf,  np.inf,  np.inf,  1.0,  1.0,  np.inf])
 umin = np.array([ 0.5, 0.5]) - np.array([0.25*9.81, 0.25*9.81])
 umax = np.array([ 3.0, 3.0]) - np.array([0.25*9.81, 0.25*9.81])
 
-ctrl = ZTC_MPC(A, B, N, Q, R, xmin, xmax, umin, umax)
+ctrl = ZTC_LMPC(A, B, N, Q, R, xmin, xmax, umin, umax)
 
 # simulate
 simulation_time = 4
