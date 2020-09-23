@@ -2,6 +2,7 @@ import numpy as np
 import scipy.linalg
 import scipy.sparse
 import cvxpy as cp
+import casadi
 
 import matplotlib.pylab as plt
 
@@ -126,12 +127,12 @@ class ZTC_LMPC:
         
     def run(self, the_state):
         self.__IC.value = the_state   # update problem with new initial state
-        self.__prob.solve(verbose = False, warm_start = True, solver = cp.OSQP)
+        self.__prob.solve(verbose = False, warm_start = True, solver = cp.OSQP )
         self.reshapeSolution()
         return self.predictedInputTrajectory[:,0]
 
 
-class QINF_MPC:
+class QINF_LMPC:
     def __init__(self,
                  the_A,         # discrete system matrix (should be scipy.sparse)            
                  the_B,         # discrete input matrix (should be scipy.sparse)
@@ -163,54 +164,114 @@ class QINF_MPC:
         self.predictedStateTrajectory = np.zeros((self.__n, self.__N+1))
         self.predictedInputTrajectory = np.zeros((self.__p, self.__N))
 
-        # define optimization variable
-        self.__U = cp.Variable((self.__p, self.__N))   # input trajectory
-        self.__X = cp.Variable((self.__n, self.__N+1)) # state trajectory
-        self.__IC = cp.Parameter(self.__n)             # set initial condition as parameter
+        # define optimization variables
+        self.__opti = casadi.Opti()
+        self.__U = self.__opti.variable(self.__p, self.__N)
+        self.__X = self.__opti.variable(self.__n, self.__N+1)
+        self.__IC = self.__opti.parameter(self.__n)
 
         # build problem
         self.__buildProblem()
 
     def __buildProblem(self):
-        pass
+        # define some functions:
+        As = casadi.MX(self.__A)
+        Bs = casadi.MX(self.__B)
+        # xmins = casadi.MX(self.__xmin)
+        # xmaxs = casadi.MX(self.__xmax)
+        # umins = casadi.MX(self.__umin)
+        # umaxs = casadi.MX(self.__umax)
 
+        # initial condition
+        self.__opti.subject_to(self.__X[:,0] == self.__IC)
+        # terminal constraint
+        self.__opti.subject_to(self.__X[:,self.__N].T@self.__P@self.__X[:,self.__N] <= self.__alpha)
+        
+        objective = 0 # init objective
+        for k in range(0,self.__N):
+            # stage cost:
+            objective += self.__X[:,k].T@self.__Q@self.__X[:,k] 
+            objective += self.__U[:,k].T@self.__R@self.__U[:,k]
+            # dynamic constraints:
+            self.__opti.subject_to(self.__X[:,k+1] == As@self.__X[:,k] + Bs@self.__U[:,k])
+            # state constraints
+            # self.__opti.subject_to(xmins <= self.__X[:,k] <= xmaxs)
+            # input constraints
+            # self.__opti.subject_to(umins <= self.__U[:,k] <= umaxs)
+        objective += self.__X[:,self.__N].T@self.__P@self.__X[:,self.__N]
+
+        self.__opti.minimize(objective)
+
+        self.__opti.solver('ipopt')
+        
     def reshapeSolution(self):
-        self.predictedStateTrajectory = self.__X.value
-        self.predictedInputTrajectory = self.__U.value
+        self.predictedStateTrajectory = self.sol.value(self.__X)
+        self.predictedInputTrajectory = self.sol.value(self.__U)
+
+    def visualizeTerminalRegion(self):
+        P = self.__P[0:2,0:2]
+        T = scipy.linalg.sqrtm(self.__alpha*scipy.linalg.inv(P))
+        m = 100
+        theta = np.linspace(0, 2*np.pi, m)
+        x = np.cos(theta)
+        y = np.sin(theta)
+        # define circle
+        C = np.zeros((2,m))
+        C[0,:] = x
+        C[1,:] = y
+        # define ellipse
+        E = np.zeros((2,m))
+        for k in range(0,m):
+            E[:,k] = T@C[:,k]
+        return E
         
     def run(self, the_state):
-        self.__IC.value = the_state   # update problem with new initial state
-        self.__prob.solve(verbose = False, warm_start = True, solver = cp.OSQP)
+        self.__opti.set_value(self.__IC, the_state)  # update problem with new initial state
+        self.sol = self.__opti.solve()
         self.reshapeSolution()
         return self.predictedInputTrajectory[:,0]
 
 def ComputeTerminalRegion(the_A, the_B, the_Q, the_R, the_umin, the_umax):
     # step 1: determine K using LQR
     P = np.matrix(scipy.linalg.solve_continuous_are(the_A, the_B, the_Q, the_R))
-    K = np.array(scipy.linalg.inv(the_R)*(the_B.T*P)) 
-    eigvals, eigvecs = np.linalg.eig(the_A - the_B@K)
-    max_eig = np.max(eigvals)
-
+    # K = np.array(scipy.linalg.inv(the_R)*(the_B.T*P)) 
+    # eigvals, eigvecs = np.linalg.eig(the_A - the_B@K)
+    # max_eig = np.max(eigvals)
+    return P, 0.9
     # choose now kappa sucht that lam_max(A-BK) < - kappa
-    kappa = 0.9
+    # kappa = 0.9
 
-    # step 2: compute P from Lyapunov equation
-    [n, p] = the_B.shape
-    P = scipy.linalg.solve_continuous_lyapunov( the_A-the_B@K + kappa*np.identity(n), the_Q+K.T@the_R@K)
+    # # step 2: compute P from Lyapunov equation
+    # [n, p] = the_B.shape
+    # # P = scipy.linalg.solve_continuous_lyapunov( the_A-the_B@K + kappa*np.identity(n), the_Q+K.T@the_R@K)
 
-    # step 3: min. x'Px
-    #         s.t. u_min <= u <= u_max
+    # # step 3: min. x'Px
+    # #         s.t. u_min <= u <= u_max
 
-    Aiq = np.concatenate(np.identity(p), np.identity(p))
-    biq = np.concatenate(the_umin, the_umax)
-    m = np.size(Aiq, 0)
-    Alpha = np.zeros(m)
+    # P = scipy.sparse.csr_matrix(P)
 
-    x = cp.Variable(n)
-    a = cp.Parameter(p)
-    b = cp.Parameter(1)
+    # Aiq = np.concatenate((np.identity(p), np.identity(p)))
+    # # Aiq = scipy.sparse.csr_matrix(Aiq@K)
 
-    objective = cp.Minimize(- cp.quad_form(x, P))
-    constraint = [a@K@x == b]
+    # K = scipy.sparse.csr_matrix(K)
+
+    # biq = np.concatenate((the_umin, the_umax))
+
+    # m   = np.size(Aiq, 0)
+    # Alpha = np.zeros(m)
+    # q = np.zeros(n)
+
+    # prob = osqp.OSQP()
+
+    # for k in range(0,m):
+    #     A = scipy.sparse.csr_matrix(Aiq@K)
+    #     b = np.array([biq[k]])
+    #     prob.setup(-P, q, A, biq, biq, alpha=1.0)
+    #     Alpha[k] = prob.solve()
+
+
+    # return P, np.minimum(Alpha)     
+
+
     
       
