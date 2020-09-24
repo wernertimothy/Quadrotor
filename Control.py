@@ -281,5 +281,98 @@ def ComputeTerminalRegion(the_A, the_B, the_Q, the_R, the_umin, the_umax):
     return P, alpha     
 
 
-    
+class OutputTracking_LMPC():
+    def __init__(
+        self,
+        the_A,          # discrete system matrix
+        the_B,          # discrete input matrix
+        the_C,          # output matrix
+        the_Q,          # state penalty
+        the_R,          # input penalty
+        the_DR,         # input rate penalty
+        the_P,          # terminal cost
+        the_N,          # discrete horizon
+        the_xmin,       # lower bounds on states
+        the_xmax,       # upper bounds on states
+        the_umin,       # lower bounds on inputs
+        the_umax,       # upper bounds on input
+        the_Dumin,      # lower bound in input rate
+        the_Dumax,      # upper bound on input rate
+        ):
+        self.__A     = the_A                  
+        self.__B     = the_B
+        self.__C     = the_C                 
+        self.__Q     = the_Q                  
+        self.__R     = the_R
+        self.__DR    = the_DR
+        self.__P     = the_P
+        self.__N     = the_N
+        self.__xmin  = the_xmin
+        self.__xmax  = the_xmax
+        self.__umin  = the_umin
+        self.__umax  = the_umax
+        self.__Dumin = the_Dumin
+        self.__Dumax = the_Dumax
+
+        [self.__n, self.__p] = the_B.shape # state and input dimension
+        self.__q = np.size(self.__C,0)     # output dimension
+
+        # prealocate logging array
+        self.predictedStateTrajectory     = np.zeros((self.__n, self.__N+1))
+        self.predictedInputTrajectory     = np.zeros((self.__p, self.__N+1))
+        self.predictedInputRateTrajectory = np.zeros((self.__p, self.__N))
+
+        # define optimization variables
+        self.__DU = cp.Variable((self.__p, self.__N))    # input rate trajectory
+        self.__U  = cp.Variable((self.__p, self.__N+1))  # input trajectory
+        self.__X  = cp.Variable((self.__n, self.__N+1))  # state trajectory
+        self.__InitState = cp.Parameter(self.__n)        # set initial state as parameter
+        self.__InitInput = cp.Parameter(self.__p)        # set inital input
+        self.__r  = cp.Parameter((self.__q, self.__N+1)) # set reference as parameter
+
+        # build problem
+        self.__buildProblem()
+
+    def __buildProblem(self):
+        objective = 0                                                 # initialize objective
+        constraints =  [self.__X[:,0]        == self.__InitState]     # first stage is current state
+        constraints =  [self.__U[:,0]        == self.__InitInput]     # first stage is last input
+        # loop through stage 0 to N:
+        for k in range(0, self.__N):
+            # quadratic cost
+            objective += cp.quad_form(self.__X[:,k], self.__C.T@self.__Q@self.__C)
+            objective += cp.quad_form(self.__U[:,k], self.__R)
+            objective += cp.quad_form(self.__DU[:,k], self.__DR)
+            # linear cost
+            objective += -2*self.__r[:,k].T@self.__Q@self.__C@self.__X[:,k]
+            # equality constraints
+            constraints += [self.__X[:,k+1] == self.__A@self.__X[:,k] + self.__B@self.__U[:,k]]
+            constraints += [self.__DU[:,k]  == self.__U[:,k+1] - self.__U[:,k]]
+            # inequality constraints
+            constraints += [self.__xmin  <= self.__X[:,k],  self.__X[:,k]  <= self.__xmax]
+            constraints += [self.__umin  <= self.__U[:,k],  self.__U[:,k]  <= self.__umax]
+            constraints += [self.__Dumin <= self.__DU[:,k], self.__DU[:,k] <= self.__Dumax]
+        # stage N+1:
+        objective += cp.quad_form(self.__X[:,self.__N], self.__C.T@self.__P@self.__C)
+        objective += cp.quad_form(self.__U[:,self.__N], self.__R)
+        objective += -2*self.__r[:,self.__N].T@self.__Q@self.__C@self.__X[:,self.__N]
+        constraints += [self.__xmin  <= self.__X[:,self.__N],  self.__X[:,self.__N]  <= self.__xmax]
+        constraints += [self.__umin  <= self.__U[:,self.__N],  self.__U[:,self.__N]  <= self.__umax]
+
+        self.__prob = cp.Problem(cp.Minimize(objective), constraints)
+
+    def reshapeSolution(self):
+        self.predictedStateTrajectory     = self.__X.value
+        self.predictedInputTrajectory     = self.__U.value
+        self.predictedInputRateTrajectory = self.__DU.value
+        
+    def run(self, the_state, the_input, the_reference):
+        self.__InitState.value = the_state   # update problem with new initial state
+        self.__InitInput.value = the_input
+        self.__r.value = the_reference
+
+        self.__prob.solve(verbose = False, warm_start = True, solver = cp.OSQP )
+
+        self.reshapeSolution()
+        return self.predictedInputTrajectory[:,1]    
       
