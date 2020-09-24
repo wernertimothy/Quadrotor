@@ -33,6 +33,7 @@ The controlers are defined in the *Control* script. The following are the implem
 Solution to the infinite horizon quadtratic cost optimal control problem with linear dynamics. As a reference see e.g. [this](https://en.wikipedia.org/wiki/Linear%E2%80%93quadratic_regulator) of for a more in depth discussion see [this](https://www.acin.tuwien.ac.at/file/teaching/master/Regelungssysteme-1/VO_Regelungssysteme1_2018.pdf).
 
 As an example see
+
 ```python
 stabilizing_LQR_simulation.py # stabilizes the system at the origin
 tracking_LQR_simulation.py # tracks a trajectory
@@ -43,6 +44,7 @@ tracking_LQR_simulation.py # tracks a trajectory
 Solution to the finite horizon quadtratic cost optimal control problem with linear dynamics and additional state and input constraints. To enforce stability the terminal state is constraint to be zero (hence the name ZTC).
 
 As an example see
+
 ```python
 ZTC_LMPC_simulation.py # stabilizes the system at the origin
 ```
@@ -51,6 +53,7 @@ ZTC_LMPC_simulation.py # stabilizes the system at the origin
 Solution to the finite horizon quadtratic cost optimal control problem with linear dynamics and additional state and input constraints. To enforce stability the terminal state is constraint to a terminal region and the stage cost is extended with a terminal cost. This terminal cost has the value of the LQR problem with the terminal state as initial condition and thus approximates an infinite horizon (hence the name QINF. As a reference see [Chen, Allgöwer 1998](http://www.paper.edu.cn/scholar/showpdf/OUD2INwINTj0IxeQh).
 
 As an example see
+
 ```python
 QINF_LMPC_simulation.py # stabilizes the system at the origin
 ```
