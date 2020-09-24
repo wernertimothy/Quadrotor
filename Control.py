@@ -235,19 +235,25 @@ class QINF_LMPC:
 def ComputeTerminalRegion(the_A, the_B, the_Q, the_R, the_umin, the_umax):
     # step 1: determine K using LQR
     P = np.matrix(scipy.linalg.solve_continuous_are(the_A, the_B, the_Q, the_R))
-    # K = np.array(scipy.linalg.inv(the_R)*(the_B.T*P)) 
-    # eigvals, eigvecs = np.linalg.eig(the_A - the_B@K)
-    # max_eig = np.max(eigvals)
-    return P, 0.9
+    K = np.array(scipy.linalg.inv(the_R)*(the_B.T*P)) 
+    eigvals, eigvecs = np.linalg.eig(the_A - the_B@K)
+    max_eig = np.max(eigvals)
     # choose now kappa sucht that lam_max(A-BK) < - kappa
-    # kappa = 0.9
+    kappa = 0.9
 
     # # step 2: compute P from Lyapunov equation
-    # [n, p] = the_B.shape
-    # # P = scipy.linalg.solve_continuous_lyapunov( the_A-the_B@K + kappa*np.identity(n), the_Q+K.T@the_R@K)
+    [n, p] = the_B.shape
+    P = scipy.linalg.solve_continuous_lyapunov( the_A-the_B@K + kappa*np.identity(n), -(the_Q+K.T@the_R@K))
 
     # # step 3: min. x'Px
     # #         s.t. u_min <= u <= u_max
+
+    # opti = casadi.Opti()
+    # x = opti.variable(n)
+    # objective = -x.T@P@x
+    # opti.minimize(objective)
+    # opti.subject_to(the_umin <= K@x <= the_umax)
+
 
     # P = scipy.sparse.csr_matrix(P)
 
@@ -270,8 +276,9 @@ def ComputeTerminalRegion(the_A, the_B, the_Q, the_R, the_umin, the_umax):
     #     prob.setup(-P, q, A, biq, biq, alpha=1.0)
     #     Alpha[k] = prob.solve()
 
+    alpha = 0.9
 
-    # return P, np.minimum(Alpha)     
+    return P, alpha     
 
 
     
