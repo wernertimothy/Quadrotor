@@ -195,9 +195,10 @@ class QINF_LMPC:
             # dynamic constraints:
             self.__opti.subject_to(self.__X[:,k+1] == As@self.__X[:,k] + Bs@self.__U[:,k])
             # state constraints
-            # self.__opti.subject_to(xmins <= self.__X[:,k] <= xmaxs)
+            # self.__opti.subject_to(self.__xmin <= self.__X[:,k] <= self.__xmax)
             # input constraints
-            # self.__opti.subject_to(umins <= self.__U[:,k] <= umaxs)
+            # self.__opti.subject_to(self.__umin <= self.__U[:,k] <= self.__umax)
+        # terminal cost
         objective += self.__X[:,self.__N].T@self.__P@self.__X[:,self.__N]
 
         self.__opti.minimize(objective)
@@ -210,7 +211,7 @@ class QINF_LMPC:
 
     def visualizeTerminalRegion(self):
         P = self.__P[0:2,0:2]
-        T = scipy.linalg.sqrtm(self.__alpha*scipy.linalg.inv(P))
+        T = scipy.linalg.sqrtm(scipy.linalg.inv(P)/self.__alpha)
         m = 100
         theta = np.linspace(0, 2*np.pi, m)
         x = np.cos(theta)
