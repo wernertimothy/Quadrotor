@@ -23,7 +23,7 @@ include-system-site-packages = true
 ```
 
 ## Systems
-The systems are defines in the *Systems* script. The following are the implementes systems:
+The systems are defined in the *Systems* script. The following are the implementes systems:
 
 * **Planar Quadtrotor**. See e.g. [here](http://underactuated.mit.edu/acrobot.html#section3)
 
