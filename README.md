@@ -25,7 +25,7 @@ include-system-site-packages = true
 ## Systems
 The systems are defined in the *Systems* script. The following are the implementes systems:
 
-* **Planar Quadtrotor**. See e.g. [here](http://underactuated.mit.edu/acrobot.html#section3)
+* **Planar Quadrotor**. See e.g. [here](http://underactuated.mit.edu/acrobot.html#section3)
 
 ## Control
 The controlers are defined in the *Control* script. The following are the implemented controlers:
