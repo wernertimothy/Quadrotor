@@ -43,12 +43,15 @@ traj = Lemniscate(duration)
 Lem = traj.visualize()
 
 # simulation
-simulation_time = duration/2
+simulation_time = 4.0
 sim_N = int(simulation_time/quad.SamleRate)
 
 X = np.empty([quad._StateDimension,sim_N])
 U = np.empty([2, sim_N])
 DU = np.empty([2, sim_N])
+
+x_pred = np.empty([sim_N, N+1])
+y_pred = np.empty([sim_N, N+1])
 
 time = np.arange(0.0, simulation_time, quad.SamleRate)
 step = 0
@@ -60,13 +63,16 @@ r = np.zeros((2,N+1))
 
 for step,t in enumerate(time):
     # evalute r in a loop
-    for tau in range(step, step+N+1):
-        r[:,tau] = traj.evaluate(time[step+tau])
+    for count, tau in enumerate(np.arange(t, t+N*quad.SamleRate, quad.SamleRate)):
+        r[:,count] = traj.evaluate(tau)
     u = ctrl.run(quad._state, last_U, r) # run controler
     U[:,step] = u                        # log input
     quad.Integrate(u)                    # apply input to system
     X[:,step] = quad._state              # log the stat
     last_U = u
+
+    x_pred[step,:] = ctrl.predictedStateTrajectory[0,:]
+    y_pred[step,:] = ctrl.predictedStateTrajectory[1,:]
 
 # visualization
 x_left  = X[0,:] - np.cos(X[2,:])*0.1
@@ -83,14 +89,19 @@ ax.set_ylabel('Y [m]')
 
 ax.plot(Lem[0,:], Lem[1,:],'r')
 
-line, = ax.plot([], [], 'o-', lw=2)
+lines = []
+line1, = ax.plot([], [], 'o-', lw=2)
+line2, = ax.plot([], [], 'g')
+lines.append(line1)
+lines.append(line2)
 
 def animate(i):
     x_data = [x_left[i], x_right[i]]
     y_data = [y_left[i], y_right[i]]
 
-    line.set_data(x_data, y_data)
-    return line,
+    line1.set_data(x_data, y_data)
+    line2.set_data(x_pred[i,:], y_pred[i,:])
+    return lines
 
 ani = animation.FuncAnimation(fig1, animate, len(X[0,:]), interval=10)
 
