@@ -24,7 +24,7 @@ quad.set_SampleRate(0.01)                                # set the sample rate
 xmin = np.array([-np.inf, -np.inf, -np.inf, -1.0, -1.0, -np.inf])
 xmax = np.array([ np.inf,  np.inf,  np.inf,  1.0,  1.0,  np.inf])
 umin = np.array([ 0.5, 0.5]) - np.array([0.25*9.81, 0.25*9.81])
-umax = np.array([ 3.0, 3.0]) - np.array([0.25*9.81, 0.25*9.81])
+umax = np.array([ 5.0, 5.0]) - np.array([0.25*9.81, 0.25*9.81])
 
 A, B = quad.getLinearization()
 Q = np.diag([10, 10, 0.1, 1, 1, 1])
@@ -36,7 +36,7 @@ A = scipy.sparse.csr_matrix(A)
 B = scipy.sparse.csr_matrix(B)
 Q = scipy.sparse.csr_matrix(Q)
 R = scipy.sparse.csr_matrix(R)
-N = 100
+N = 150
 
 ctrl = QINF_LMPC(A, B, N, Q, R, P, alpha, xmin, xmax, umin, umax)
 

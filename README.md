@@ -3,10 +3,8 @@ simulation of different controlers for quadrotor stabilization, path following a
 
 ## ToDo
 * make Control.ComputeTerminalRegion run
-* add constraints to QINF LMPC.
-CasADi error: .../casadi/core/mx_node.cpp:183: Can only determine truth value of a numeric MX.
 * add Jacobian and Hessian to QINF NLP
-* add tracking LMPC
+* make tracking LMPC run
 * add meassuerement/noise simulation
 * add estimation (Kalman, EKF)
 

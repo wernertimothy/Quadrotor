@@ -127,7 +127,7 @@ class ZTC_LMPC:
         
     def run(self, the_state):
         self.__IC.value = the_state   # update problem with new initial state
-        self.__prob.solve(verbose = False, warm_start = True, solver = cp.OSQP )
+        self.__prob.solve(verbose = True, warm_start = True, solver = cp.OSQP )
         self.reshapeSolution()
         return self.predictedInputTrajectory[:,0]
 
@@ -195,9 +195,11 @@ class QINF_LMPC:
             # dynamic constraints:
             self.__opti.subject_to(self.__X[:,k+1] == As@self.__X[:,k] + Bs@self.__U[:,k])
             # state constraints
-            # self.__opti.subject_to(self.__xmin <= self.__X[:,k] <= self.__xmax)
+            self.__opti.subject_to(self.__xmin <= self.__X[:,k])
+            self.__opti.subject_to(self.__X[:,k] <= self.__xmax)
             # input constraints
-            # self.__opti.subject_to(self.__umin <= self.__U[:,k] <= self.__umax)
+            self.__opti.subject_to(self.__umin <= self.__U[:,k])
+            self.__opti.subject_to(self.__U[:,k] <= self.__umax)
         # terminal cost
         objective += self.__X[:,self.__N].T@self.__P@self.__X[:,self.__N]
 
@@ -347,17 +349,17 @@ class OutputTracking_LMPC():
             objective   += -2*self.__r[:,k].T@self.__Q@self.__C@self.__X[:,k]
             # equality constraints
             constraints += [self.__X[:,k+1] == self.__A@self.__X[:,k] + self.__B@self.__U[:,k]]
-            constraints += [self.__DU[:,k]  == self.__U[:,k+1] - self.__U[:,k]]
+            constraints += [self.__U[:,k+1] == self.__U[:,k] + self.__DU[:,k]]
             # inequality constraints
-            constraints += [self.__xmin  <= self.__X[:,k],  self.__X[:,k]  <= self.__xmax]
-            constraints += [self.__umin  <= self.__U[:,k],  self.__U[:,k]  <= self.__umax]
-            constraints += [self.__Dumin <= self.__DU[:,k], self.__DU[:,k] <= self.__Dumax]
+            # constraints += [self.__xmin  <= self.__X[:,k],  self.__X[:,k]  <= self.__xmax]
+            # constraints += [self.__umin  <= self.__U[:,k],  self.__U[:,k]  <= self.__umax]
+            # constraints += [self.__Dumin <= self.__DU[:,k], self.__DU[:,k] <= self.__Dumax]
         # stage N+1:
         objective   += cp.quad_form(self.__X[:,self.__N], self.__C.T@self.__P@self.__C)
         objective   += cp.quad_form(self.__U[:,self.__N], self.__R)
-        objective   += -2*self.__r[:,self.__N].T@self.__Q@self.__C@self.__X[:,self.__N]
-        constraints += [self.__xmin  <= self.__X[:,self.__N],  self.__X[:,self.__N]  <= self.__xmax]
-        constraints += [self.__umin  <= self.__U[:,self.__N],  self.__U[:,self.__N]  <= self.__umax]
+        objective   += -2*self.__r[:,self.__N].T@self.__P@self.__C@self.__X[:,self.__N]
+        # constraints += [self.__xmin  <= self.__X[:,self.__N],  self.__X[:,self.__N]  <= self.__xmax]
+        # constraints += [self.__umin  <= self.__U[:,self.__N],  self.__U[:,self.__N]  <= self.__umax]
 
         self.__prob = cp.Problem(cp.Minimize(objective), constraints)
 
@@ -371,7 +373,7 @@ class OutputTracking_LMPC():
         self.__InitInput.value = the_input      # and last input
         self.__r.value         = the_reference  # and new reference
 
-        self.__prob.solve(verbose = False, warm_start = True, solver = cp.OSQP )
+        self.__prob.solve(verbose = True, warm_start = True, solver = cp.OSQP )
 
         self.reshapeSolution()
 
