@@ -19,7 +19,7 @@ class PlanarQuadrotor:
         self.__inertia            = 0.002  # [kgm²]   moment of inertia about the center
         self.__ArmLength          = 0.1    # [m]      length from center to rotor
         self.__g                  = 9.81   # [m/s²]   gravity
-        # == ststes ==
+        # == states ==
         # self._x                   = 0.0    # [m]      x position 
         # self._dx                  = 0.0    # [m/s]    x velocity
         # self._y                   = 0.0    # [m]      y position
