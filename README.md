@@ -43,7 +43,7 @@ As an example see
 
 ```python
 stabilizing_LQR_simulation.py # stabilizes the system at the origin
-tracking_LQR_simulation.py # tracks a trajectory
+tracking_LQR_simulation.py    # tracks a trajectory
 ```
 
 
