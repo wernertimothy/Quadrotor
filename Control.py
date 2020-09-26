@@ -250,11 +250,28 @@ def ComputeTerminalRegion(the_A, the_B, the_Q, the_R, the_umin, the_umax):
     # # step 3: min. x'Px
     # #         s.t. u_min <= u <= u_max
 
-    # opti = casadi.Opti()
-    # x = opti.variable(n)
-    # objective = -x.T@P@x
-    # opti.minimize(objective)
-    # opti.subject_to(the_umin <= K@x <= the_umax)
+    opti = casadi.Opti()
+    opti.solver('ipopt')
+    x = opti.variable(n)
+    objective = -x.T@P@x
+    opti.minimize(objective)
+
+    Aiq = np.concatenate((-np.identity(p), np.identity(p)))
+    biq = np.concatenate((-the_umin, the_umax))
+    nm = np.size(biq)
+
+    a = opti.parameter(p)
+    b = opti.parameter()
+
+    opti.subject_to(a.T@K@x == b)
+
+    # for k in range(0,nm):
+    k = 2
+    opti.set_value(a, Aiq[k,:])
+    opti.set_value(b, biq[k])
+
+    sol = opti.solve()
+
 
 
     # P = scipy.sparse.csr_matrix(P)
