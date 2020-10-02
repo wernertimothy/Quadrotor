@@ -65,3 +65,14 @@ As an example see
 ```python
 QINF_LMPC_simulation.py # stabilizes the system at the origin
 ```
+
+### Output Tracking LMPC
+
+As an example see
+
+```python
+tracking_LMPC_simulation.py # tracks the lemnsicate with rate constraints
+```
+
+<img src="https://github.com/wernertimothy/Quadrotor/blob/master/doc/tracking_LMPC.gif" />
+<img src="https://github.com/wernertimothy/Quadrotor/blob/master/doc/tracking_LMPC_input.png" />
