@@ -67,6 +67,7 @@ QINF_LMPC_simulation.py # stabilizes the system at the origin
 ```
 
 ### Output Tracking LMPC
+For a discussion of the problem see [here](https://github.com/wernertimothy/Quadrotor/blob/master/doc/Linear Refrence Tracking MPC.pdf)
 
 As an example see
 
