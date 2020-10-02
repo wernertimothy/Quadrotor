@@ -318,7 +318,7 @@ class OutputTracking_LMPC():
         the_Dumin,      # lower bound in input rate
         the_Dumax,      # upper bound on input rate
         ):
-        self.__A     = the_A                  
+        self.__A     = the_A                
         self.__B     = the_B
         self.__C     = the_C                 
         self.__Q     = the_Q                  
@@ -342,53 +342,58 @@ class OutputTracking_LMPC():
         self.predictedInputRateTrajectory = np.zeros((self.__p, self.__N))
 
         # define optimization variables
-        self.__DU        = cp.Variable((self.__p, self.__N))    # input rate trajectory
-        self.__U         = cp.Variable((self.__p, self.__N+1))  # input trajectory
-        self.__X         = cp.Variable((self.__n, self.__N+1))  # state trajectory
-        self.__InitState = cp.Parameter(self.__n)               # set initial state as parameter
-        self.__InitInput = cp.Parameter(self.__p)               # set inital input
-        self.__r         = cp.Parameter((self.__q, self.__N+1)) # set reference as parameter
+        self.__DU   = cp.Variable((self.__p, self.__N))               # input rate trajectory
+        self.__Xtil = cp.Variable((self.__n + self.__p, self.__N+1))  # augmented state trajectory
+        self.__IC   = cp.Parameter(self.__n + self.__p)                          # set initial state as parameter
+        self.__r    = cp.Parameter((self.__q, self.__N+1))            # set reference as parameter
 
         # build problem
         self.__buildProblem()
 
     def __buildProblem(self):
-        objective   = 0                                        # initialize objective
-        constraints =  [self.__X[:,0] == self.__InitState]     # first stage is current state
-        constraints =  [self.__U[:,0] == self.__InitInput]     # first stage is last input
+        # augment the system
+        tmp1 = np.concatenate((self.__A, self.__B), axis=1)
+        tmp2 = np.concatenate((np.zeros((self.__p,self.__n)), np.identity(self.__p)), axis=1)
+        Atil = np.concatenate((tmp1, tmp2))
+        Btil = np.concatenate((self.__B, np.identity(self.__p)))
+
+        Atil = scipy.sparse.csr_matrix(Atil)
+        Btil = scipy.sparse.csr_matrix(Btil)
+        # augment penalties
+        # Qtil = scipy.linalg.block_diag(self.__Q, self.__R)
+        # Ptil = scipy.linalg.block_diag(self.__P, self.__R)
+        # augment constraints
+        xtilmin = np.concatenate((self.__xmin, self.__umin))
+        xtilmax = np.concatenate((self.__xmax, self.__umax))
+
+        objective   = 0                                   # initialize objective
+        constraints = [self.__Xtil[:,0] == self.__IC]     # first stage is current state
         # loop through stage 0 to N:
         for k in range(0, self.__N):
             # quadratic cost
-            objective   += cp.quad_form(self.__X[:,k], self.__C.T@self.__Q@self.__C)
-            objective   += cp.quad_form(self.__U[:,k], self.__R)
+            objective   += cp.quad_form(self.__C@self.__Xtil[0:self.__n,k] - self.__r[:,k], self.__Q)
+            objective   += cp.quad_form(self.__Xtil[self.__n:self.__n+self.__p,k], self.__R)
             objective   += cp.quad_form(self.__DU[:,k], self.__DR)
-            # linear cost
-            objective   += -2*self.__r[:,k].T@self.__Q@self.__C@self.__X[:,k]
             # equality constraints
-            constraints += [self.__X[:,k+1] == self.__A@self.__X[:,k] + self.__B@self.__U[:,k]]
-            constraints += [self.__U[:,k+1] == self.__U[:,k] + self.__DU[:,k]]
+            constraints += [self.__Xtil[:,k+1] == Atil@self.__Xtil[:,k] + Btil@self.__DU[:,k]]
             # inequality constraints
-            # constraints += [self.__xmin  <= self.__X[:,k],  self.__X[:,k]  <= self.__xmax]
-            # constraints += [self.__umin  <= self.__U[:,k],  self.__U[:,k]  <= self.__umax]
-            # constraints += [self.__Dumin <= self.__DU[:,k], self.__DU[:,k] <= self.__Dumax]
+            constraints += [xtilmin <= self.__Xtil[:,k],  self.__Xtil[:,k] <= xtilmax]
+            constraints += [self.__Dumin <= self.__DU[:,k], self.__DU[:,k] <= self.__Dumax]
         # stage N+1:
-        objective   += cp.quad_form(self.__X[:,self.__N], self.__C.T@self.__P@self.__C)
-        objective   += cp.quad_form(self.__U[:,self.__N], self.__R)
-        objective   += -2*self.__r[:,self.__N].T@self.__P@self.__C@self.__X[:,self.__N]
-        # constraints += [self.__xmin  <= self.__X[:,self.__N],  self.__X[:,self.__N]  <= self.__xmax]
-        # constraints += [self.__umin  <= self.__U[:,self.__N],  self.__U[:,self.__N]  <= self.__umax]
+        objective   += cp.quad_form(self.__C@self.__Xtil[0:self.__n,self.__N] - self.__r[:,self.__N], self.__Q)
+        objective   += cp.quad_form(self.__Xtil[self.__n:self.__n+self.__p, self.__N], self.__R)
+        constraints += [xtilmin <= self.__Xtil[:,self.__N],  self.__Xtil[:,self.__N] <= xtilmax]
 
         self.__prob = cp.Problem(cp.Minimize(objective), constraints)
 
     def reshapeSolution(self):
-        self.predictedStateTrajectory     = self.__X.value
-        self.predictedInputTrajectory     = self.__U.value
+        self.predictedStateTrajectory     = self.__Xtil.value[0:self.__n,:]
+        self.predictedInputTrajectory     = self.__Xtil.value[self.__n:self.__n+self.__p,:]
         self.predictedInputRateTrajectory = self.__DU.value
         
     def run(self, the_state, the_input, the_reference):
-        self.__InitState.value = the_state      # update problem with new initial state
-        self.__InitInput.value = the_input      # and last input
-        self.__r.value         = the_reference  # and new reference
+        self.__IC.value = np.concatenate((the_state, the_input))   # update problem with new initial state
+        self.__r.value  = the_reference                            # and new reference
 
         self.__prob.solve(verbose = True, warm_start = True, solver = cp.OSQP )
 
