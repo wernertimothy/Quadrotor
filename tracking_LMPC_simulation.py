@@ -27,13 +27,13 @@ Q    = scipy.sparse.diags([10.0, 10.0])
 P    = scipy.sparse.diags([20.0, 20.0])
 R    = scipy.sparse.diags([0.01, 0.01])
 DR   = scipy.sparse.diags([1.0, 1.0])
-N    = 100
+N    = 60
 xmin = np.array([-np.inf, -np.inf, -np.inf, -2.0, -2.0, -np.inf])
 xmax = np.array([ np.inf,  np.inf,  np.inf,  2.0,  2.0,  np.inf])
 umin = np.array([ 0.5, 0.5]) - np.array([0.25*9.81, 0.25*9.81])
 umax = np.array([ 3.0, 3.0]) - np.array([0.25*9.81, 0.25*9.81])
-Dumin = np.array([-3.0, -3.0])*quad.SamleRate
-Dumax = np.array([3.0, 3.0])*quad.SamleRate
+Dumin = np.array([-5.0, -5.0])*quad.SamleRate
+Dumax = np.array([5.0, 5.0])*quad.SamleRate
 
 ctrl = OutputTracking_LMPC(A, B, C, Q, R, DR, P, N, xmin, xmax, umin, umax, Dumin, Dumax)
 
@@ -87,7 +87,7 @@ x_right = X[0,:] + np.cos(X[2,:])*0.1
 y_left  = X[1,:] - np.sin(X[2,:])*0.1
 y_right = X[1,:] + np.sin(X[2,:])*0.1
 
-fig1 = plt.figure(figsize=(5, 4))
+fig1 = plt.figure()
 ax = fig1.add_subplot(111, autoscale_on=False, xlim=(-2, 2), ylim=(-2, 2))
 ax.set_aspect('equal')
 ax.grid()
@@ -114,7 +114,10 @@ def animate(i):
     
     return lines
 
-ani = animation.FuncAnimation(fig1, animate, len(X[0,:]), interval=10)
+ani = animation.FuncAnimation(fig1, animate, len(X[0,:]), interval=10, repeat=False)
+
+# writer = animation.PillowWriter(fps=30)
+# ani.save('doc/tracking_LMPC.gif', writer=writer) 
 
 fig2, (ax1, ax2) = plt.subplots(2,1)
 ax1.plot(time, U[0,:])
@@ -125,4 +128,7 @@ ax2.set_xlabel('time [s]')
 ax1.grid()
 ax2.grid()
 
+# fig2.savefig('doc/tracking_LMPC_input.png')
+
 plt.show()
+
