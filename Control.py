@@ -211,9 +211,9 @@ class QINF_LMPC:
         self.predictedStateTrajectory = self.sol.value(self.__X)
         self.predictedInputTrajectory = self.sol.value(self.__U)
 
-    def visualizeTerminalRegion(self):
-        P = self.__P[0:2,0:2]
-        T = scipy.linalg.sqrtm(scipy.linalg.inv(P)/self.__alpha)
+    def visualizeTerminalRegion(self, the_C):
+        P = the_C@self.__P@the_C.T
+        T = scipy.linalg.sqrtm(scipy.linalg.inv(P/self.__alpha))
         m = 100
         theta = np.linspace(0, 2*np.pi, m)
         x = np.cos(theta)
@@ -253,7 +253,7 @@ def ComputeTerminalRegion(the_A, the_B, the_Q, the_R, the_umin, the_umax):
     opti = casadi.Opti()
     opti.solver('ipopt')
     x = opti.variable(n)
-    objective = -x.T@P@x
+    objective = x.T@P@x # shd be the same as -x.T@P@x, because we have equality constraint
     opti.minimize(objective)
 
     Aiq = np.concatenate((-np.identity(p), np.identity(p)))
@@ -265,37 +265,17 @@ def ComputeTerminalRegion(the_A, the_B, the_Q, the_R, the_umin, the_umax):
 
     opti.subject_to(a.T@K@x == b)
 
-    # for k in range(0,nm):
-    k = 2
-    opti.set_value(a, Aiq[k,:])
-    opti.set_value(b, biq[k])
+    ALPHA = np.zeros(nm)
 
-    sol = opti.solve()
+    for k in range(0,nm):
+        opti.set_value(a, Aiq[k,:])
+        opti.set_value(b, biq[k])
 
+        sol = opti.solve()
 
+        ALPHA[k] = sol.value(x)@P@sol.value(x)
 
-    # P = scipy.sparse.csr_matrix(P)
-
-    # Aiq = np.concatenate((np.identity(p), np.identity(p)))
-    # # Aiq = scipy.sparse.csr_matrix(Aiq@K)
-
-    # K = scipy.sparse.csr_matrix(K)
-
-    # biq = np.concatenate((the_umin, the_umax))
-
-    # m   = np.size(Aiq, 0)
-    # Alpha = np.zeros(m)
-    # q = np.zeros(n)
-
-    # prob = osqp.OSQP()
-
-    # for k in range(0,m):
-    #     A = scipy.sparse.csr_matrix(Aiq@K)
-    #     b = np.array([biq[k]])
-    #     prob.setup(-P, q, A, biq, biq, alpha=1.0)
-    #     Alpha[k] = prob.solve()
-
-    alpha = 0.9
+    alpha = np.min(ALPHA)
 
     return P, alpha     
 
