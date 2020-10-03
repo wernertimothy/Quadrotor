@@ -4,7 +4,7 @@ simulation of different controlers for quadrotor stabilization, path following a
 ## ToDo
 * make Control.ComputeTerminalRegion run
 * add Jacobian and Hessian to QINF NLP
-* make tracking LMPC run
+* add LTV tracking
 * make scipy.sparse.csr_matrix() inside the controller
 * add meassuerement/noise simulation
 * add estimation (Kalman, EKF)
