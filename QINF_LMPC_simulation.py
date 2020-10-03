@@ -28,7 +28,7 @@ umax = np.array([ 5.0, 5.0]) - np.array([0.25*9.81, 0.25*9.81])
 
 A, B = quad.getLinearization()
 Q = np.diag([10, 10, 0.1, 1, 1, 1])
-R = np.diag([10, 10])
+R = np.diag([1, 1])
 P, alpha = ComputeTerminalRegion(A,B,Q,R,umin,umax)
 
 A, B = quad.getDiscreteLinearization()
@@ -36,12 +36,12 @@ A = scipy.sparse.csr_matrix(A)
 B = scipy.sparse.csr_matrix(B)
 Q = scipy.sparse.csr_matrix(Q)
 R = scipy.sparse.csr_matrix(R)
-N = 150
+N = 100
 
 ctrl = QINF_LMPC(A, B, N, Q, R, P, alpha, xmin, xmax, umin, umax)
 
 # simulate
-simulation_time = 4
+simulation_time = 3
 sim_N = int(simulation_time/quad.SamleRate)
 
 X = np.empty([quad._StateDimension,sim_N])
@@ -76,7 +76,11 @@ ax.grid()
 ax.set_xlabel('X [m]')
 ax.set_ylabel('Y [m]')
 
-E = ctrl.visualizeTerminalRegion()
+C = np.array([
+    [1, 0, 0, 0, 0, 0],
+    [0, 1, 0, 0, 0, 0]
+])
+E = ctrl.visualizeTerminalRegion(C)
 ax.plot(E[0,:], E[1,:],'y')
 
 lines = []

@@ -14,7 +14,7 @@ X0 = np.array([float(-1.0 + np.random.rand(1)*2),
                float(-0.5 + np.random.rand(1)*1),
                float(-0.5 + np.random.rand(1)*1),
                float(-0.1 + np.random.rand(1)*0.2) ])              # random initial condition
-# X0 = np.array([-0.3, -0.8, 0.6, 0.1, -0.8, 0.2 ])          # initial condition
+X0 = np.array([-0.3, -0.8, 0.6, 0.1, -0.8, 0.2 ])          # initial condition
 quad.set_state(X0)                                                 # set initial condition
 quad.set_SampleRate(0.01)                                          # set the sample rate
 
@@ -22,15 +22,15 @@ A, B = quad.getLinearization()                                      # get the li
 ctrl = ContinuousLQR(A,                                             # controller is stabilizing LQR
                      B, 
                      np.diag([10, 10, 1, 1, 1, 1]), 
-                     np.diag([10, 10]))
+                     np.diag([1, 1]))
 
 ctrl.setControlOffset(np.array([0.25*9.81, 0.25*9.81]))            # assuming perfect knowledge
-ctrl.setBoxConstraints(np.array( [[0.5, 3.0],                         # set min and max force
-                                  [0.5, 3.0]] ))
+ctrl.setBoxConstraints(np.array( [[0.5, 5.0],                         # set min and max force
+                                  [0.5, 5.0]] ))
 
 
 # simulate
-simulation_time = 4
+simulation_time = 3
 N = int(simulation_time/quad.SamleRate)
 
 X = np.empty([quad._StateDimension,N])

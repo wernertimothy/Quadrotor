@@ -24,17 +24,17 @@ A, B = quad.getDiscreteLinearization()
 A = scipy.sparse.csr_matrix(A)
 B = scipy.sparse.csr_matrix(B)
 Q = scipy.sparse.diags([10, 10, 0.1, 1, 1, 1])
-R = scipy.sparse.diags([10, 10])
-N = 250
+R = scipy.sparse.diags([1, 1])
+N = 200
 xmin = np.array([-np.inf, -np.inf, -np.inf, -1.0, -1.0, -np.inf])
 xmax = np.array([ np.inf,  np.inf,  np.inf,  1.0,  1.0,  np.inf])
 umin = np.array([ 0.5, 0.5]) - np.array([0.25*9.81, 0.25*9.81])
-umax = np.array([ 3.0, 3.0]) - np.array([0.25*9.81, 0.25*9.81])
+umax = np.array([ 5.0, 5.0]) - np.array([0.25*9.81, 0.25*9.81])
 
 ctrl = ZTC_LMPC(A, B, N, Q, R, xmin, xmax, umin, umax)
 
 # simulate
-simulation_time = 4
+simulation_time = 3
 sim_N = int(simulation_time/quad.SamleRate)
 
 X = np.empty([quad._StateDimension,sim_N])
