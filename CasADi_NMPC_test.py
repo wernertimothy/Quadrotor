@@ -1,6 +1,9 @@
 import casadi
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+from Systems import PlanarQuadrotor
+
 
 # === define parameter ===
 nx = 6 # state dim
@@ -45,12 +48,12 @@ intg_options = dict(tf = dt)            # define integration step
 dae = dict(x = x, p = u, ode = f(x,u))  # define the dae to integrate (ZOH)
 
 # define the integrator
-intg = casadi.integrator('intg', 'rk', dae, intg_options) 
+intg = casadi.integrator('intg', 'rk', dae, intg_options)
 res = intg(x0 = x, p = u)
 # define symbolic expression of integrator
-x_next = res['xf']  
+x_next = res['xf']
 # define discretized ode
-F = casadi.Function('F', [x, u], [x_next], ['x', 'u'], ['x_next']) 
+F = casadi.Function('F', [x, u], [x_next], ['x', 'u'], ['x_next'])
 
 # === define OCP ===
 '''
@@ -96,29 +99,92 @@ objective += qsum_x(x[:,N], P) # terminal cost
 opti.minimize(objective)
 
 # set solver
-opti.solver('sqpmethod', dict(qpsol = 'osqp'))
-opti.solver('ipopt')
+opts = dict(qpsol = 'osqp',
+            print_header = False,
+            print_iteration = False,
+            print_time = False,
+            # qpsol_options = dict(print_iter = False,
+            #                      print_header = False,
+            #                      print_info = False
+            #                      )
+            )
+opti.solver('sqpmethod', opts)
+# opti.solver('ipopt')
 
 # set initial condition
 X0 = np.array([-0.3, -0.8, 0.6, 0.1, -0.8, 0.2 ])
 opti.set_value(x0, X0)
 
-# solve OCP
-sol = opti.solve()
+# solve OCP in RH fassion
+quad = PlanarQuadrotor()
+quad.set_state(X0)
+quad.set_SampleRate(dt)
+
+simulation_time = 2.0
+sim_N = int(simulation_time/dt)
+time = np.arange(0.0, simulation_time, quad.SamleRate)
+
+X = np.empty([quad._StateDimension,sim_N])
+U = np.empty([2, sim_N])
+
+x_pred = np.empty([sim_N, N+1])
+y_pred = np.empty([sim_N, N+1])
+
+for k in range(0, sim_N):
+    sol = opti.solve()
+    X[:,k] = sol.value(x)[:,0]
+    U[:,k] = sol.value(u)[:,0]
+
+    quad.Integrate(U[:,k])
+    opti.set_value(x0, quad._state)
+
+    x_pred[k,:] = sol.value(x)[0,:]
+    y_pred[k,:] = sol.value(x)[1,:]
+
+    if k % 10 == 0: 
+        print(k+1, 'of', sim_N)
+
 
 
 # === visualization ===
+x_left  = X[0,:] - np.cos(X[2,:])*0.1
+x_right = X[0,:] + np.cos(X[2,:])*0.1
+y_left  = X[1,:] - np.sin(X[2,:])*0.1
+y_right = X[1,:] + np.sin(X[2,:])*0.1
 
-time = np.arange(0,N*dt, dt)
-plt.plot(sol.value(x[0,:]), sol.value(x[1,:]))
+fig1 = plt.figure(figsize=(5, 4))
+ax = fig1.add_subplot(111, autoscale_on=False, xlim=(-2, 2), ylim=(-2, 2))
+ax.set_aspect('equal')
+ax.grid()
+ax.set_xlabel('X [m]')
+ax.set_ylabel('Y [m]')
+
+lines = []
+line1, = ax.plot([], [], 'o-', lw=2)
+line2, = ax.plot([], [], 'g')
+lines.append(line1)
+lines.append(line2)
+
+def animate(i):
+    x_data = [x_left[i], x_right[i]]
+    y_data = [y_left[i], y_right[i]]
+
+    line1.set_data(x_data, y_data)
+    line2.set_data(x_pred[i,:], y_pred[i,:])
+    return lines
+
+ani = animation.FuncAnimation(fig1, animate, len(X[0,:]), interval=10)
 
 fig2, (ax1, ax2) = plt.subplots(2,1)
-ax1.plot(time, sol.value(u[0,:]))
-ax2.plot(time, sol.value(u[1,:]))
+ax1.plot(time, U[0,:])
+ax2.plot(time, U[1,:])
 ax1.set_ylabel('u1 [N]')
 ax2.set_ylabel('u2 [N]')
 ax2.set_xlabel('time [s]')
 ax1.grid()
 ax2.grid()
+
+# fig3 = plt.figure()
+# plt.plot(time, X[5,:])
 
 plt.show()
