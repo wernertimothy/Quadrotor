@@ -2,12 +2,13 @@
 simulation of different controlers for quadrotor stabilization, path following and reference tracking
 
 ## ToDo
-* make Control.ComputeTerminalRegion run
-* add Jacobian and Hessian to QINF NLP
-* add LTV tracking
 * make scipy.sparse.csr_matrix() inside the controller
+* organize scripts and add simulation environment
+* add trajectory planning/ trajectory generation
+* add LTV tracking
 * add meassuerement/noise simulation
 * add estimation (Kalman, EKF)
+* add Robust MPC
 
 ## Dependencies
 To run the code the following packages are required:
