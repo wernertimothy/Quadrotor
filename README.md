@@ -7,7 +7,7 @@ simulation of different controlers for quadrotor stabilization, path following a
 * add trajectory planning/ trajectory generation
 * add LTV tracking
 * add meassuerement/noise simulation
-* add Robust MPC
+* add Robust MPC / SMPC
 * add estimation (Kalman, EKF)
 
 ## Dependencies
